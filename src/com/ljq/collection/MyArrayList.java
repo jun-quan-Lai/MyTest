@@ -544,6 +544,11 @@ public class MyArrayList<E> extends MyAbstractList<E>
         }
     }
 
+    @Override
+    public boolean containsAll(MyCollection<?> c) {
+        return false;
+    }
+
     private class MySubList extends MyAbstractList<E> implements RandomAccess {
         private final MyAbstractList<E> parent;
         private final int parentOffset;
@@ -558,10 +563,21 @@ public class MyArrayList<E> extends MyAbstractList<E>
             this.modCount = MyArrayList.this.modCount;
         }
 
+        public E set(int index, E e) {
+            rangeCheck(index);
+            checkForComodification();
+            E oldValue = MyArrayList.this.elementData(offset + index);
+            MyArrayList.this.elementData[offset + index] = e;
+            return oldValue;
+        }
+
         @Override
         public E get(int index) {
-            return null;
+            rangeCheck(index);
+            checkForComodification();
+            return MyArrayList.this.elementData(offset + index);
         }
+
 
         @Override
         public ListIterator<E> listIterator(int index) {
@@ -570,16 +586,58 @@ public class MyArrayList<E> extends MyAbstractList<E>
 
         @Override
         public int size() {
-            return 0;
+            checkForComodification();
+            return this.size;
         }
 
-        @Override
-        public boolean containsAll(MyCollection<?> c) {
-            return false;
+        public void add(int index, E e) {
+            rangeCheckForAdd(index);
+            checkForComodification();
+            parent.add(parentOffset + index, e);
+            this.modCount = parent.modCount;
+            this.size++;
+        }
+
+        public E remove(int index) {
+            rangeCheck(index);
+            checkForComodification();
+            E result = parent.remove(parentOffset + index);
+            this.modCount = parent.modCount;
+            this.size--;
+            return result;
+        }
+
+        protected void removeRange(int fromIndex, int toIndex) {
+            checkForComodification();
+            parent.removeRange(parentOffset + fromIndex, parentOffset + toIndex);
+            this.modCount = parent.modCount;
+            this.size -= toIndex - fromIndex;
         }
 
         @Override
         public boolean addAll(MyCollection<? extends E> c) {
+            return addAll(this.size, c);
+        }
+
+        public boolean addAll(int index, MyCollection<? extends E> c) {
+            rangeCheckForAdd(index);
+            int cSize = c.size();
+            if (cSize == 0) {
+                return false;
+            }
+            checkForComodification();
+            parent.addAll(parentOffset + index, c);
+            this.modCount = parent.modCount;
+            this.size += cSize;
+            return true;
+        }
+
+        public Iterator<E> iterator() {
+            return listIterator();
+        }
+
+        @Override
+        public boolean containsAll(MyCollection<?> c) {
             return false;
         }
 
@@ -593,19 +651,63 @@ public class MyArrayList<E> extends MyAbstractList<E>
             return false;
         }
 
+        public MyList<E> subList(int fromIndex, int toIndex) {
+            subListRangeCheck(fromIndex, toIndex, size);
+            return new MySubList(this, offset, fromIndex, toIndex);
+        }
+
         private void rangeCheck(int index) {
             if (index < 0 || index >= this.size) {
-                throw new IndexOutOfBoundsException();
+                throw new IndexOutOfBoundsException(outOfBoundsMsg(index));
             }
+        }
+
+        private void rangeCheckForAdd(int index) {
+            if (index < 0 || index > this.size) {
+                throw new IndexOutOfBoundsException(outOfBoundsMsg(index));
+            }
+        }
+
+        private String outOfBoundsMsg(int index) {
+            return "Index: " + index + ", Size: " + this.size;
+        }
+
+        private void checkForComodification() {
+            if (MyArrayList.this.modCount != this.modCount) {
+                throw new ConcurrentModificationException();
+            }
+        }
+        //1.8
+//        public Spliterator<E> spliterator() {
+//            checkForComodification();
+//            return new ArrayListSpliterator<E> (MyArrayList.this, offset, offset + this.size, this.modCount);
+//        }
+    }
+
+    @Override
+    public void forEach(Consumer<? super E> action) {
+        Objects.requireNonNull(action);
+        final int expectedModCount = modCount;
+
+        final E[] elementData = (E[]) this.elementData;
+        final int size = this.size;
+        for (int i=0; modCount == expectedModCount && i < size; i++) {
+            action.accept(elementData[i]);
+        }
+
+        if (modCount != expectedModCount) {
+            throw new ConcurrentModificationException();
         }
     }
 
+    //1.8
+//    @Override
+//    public Spliterator<E> spliterator() {
+//        return new ArrayListSpliterator<> (this, 0, -1, 0);
+//    }
 
 
-    @Override
-    public boolean containsAll(MyCollection<?> c) {
-        return false;
-    }
+
 
 
 
