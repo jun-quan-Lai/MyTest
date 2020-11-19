@@ -24,7 +24,7 @@ public class Main {
         students.stream().filter(v->"mark".equals(v.getName()))
                 .findFirst();
 
-        System.out.printf("haha");
+        System.out.println("haha");
     }
 
 
